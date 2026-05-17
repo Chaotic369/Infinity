@@ -1070,7 +1070,7 @@ window.filterSyllabusBySem = function() {
 }
 
 window.selectMasterSubject = function(sem, code) {
-  activeSubjectId = code;
+  window.activeSubjectId = code;
   const subj = MASTER_SYLLABUS[sem].find(s => s.code === code);
   $('syllabus-idle').style.display = 'none';
   $('syllabus-detail').style.display = 'flex';
@@ -1127,7 +1127,6 @@ window.renderMasterTopics = function(code) {
       
       window.save();
       window.renderMasterTopics(code);
-      // Update sidebar without breaking scroll position
       const sem = $('syl-sem-select').value;
       const subjects = MASTER_SYLLABUS[sem] || [];
       const sidebarItems = $('subject-list').children;
@@ -1215,7 +1214,6 @@ function addXP(amount, source, x, y) {
   S.profile.level = after.level;
   S.profile.rank = getRank(after.level);
 
-  // Track heatmap
   const today = dateKey(new Date());
   S.heatmap[today] = (S.heatmap[today] || 0) + Math.max(0, amount);
 
@@ -1275,8 +1273,6 @@ function updateHeader() {
 // ═══════════════════════════════════════════════
 function $(id) { return document.getElementById(id); }
 function dateKey(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` }
-
-let _lockInterval = null;
 
 function toast(msg, type='blue') {
   const c = $('toasts');
@@ -1399,6 +1395,7 @@ window.toggleTimelineBlockCompletion = function(id, event) {
 
 function renderTimeline() {
   const container = $('routine-timeline');
+  if(!container) return;
   container.innerHTML = '';
   const now = new Date();
   let nowMins = now.getHours()*60+now.getMinutes();
@@ -1433,7 +1430,7 @@ function renderTimeline() {
           <div class="task-check ${isDone?'checked':''}" style="margin-right:8px; width:13px; height:13px;" onclick="window.toggleTimelineBlockCompletion('${block.id}', event)">${isDone?'<i class="fa-solid fa-check" style="font-size:7px;color:#0b0b0b"></i>':''}</div>
           <span style="min-width:38px;color:${isActive?block.color:'var(--td)'};font-size:10px;${isDone?'text-decoration:line-through':''}">${block.time}</span>
           <span style="color:${isActive?block.color:(isPast?'var(--td)':'var(--tm)')};font-size:11px;flex:1;${isDone?'text-decoration:line-through':''}">${block.label}</span>
-          ${isActive && !isDone?'<span style="font-size:8px;color:'+block.color+';margin-left:4px">◄ NOW</span>':''}
+          ${isActive && !isDone?'<span style="font-size:8px;color='+block.color+';margin-left:4px">◄ NOW</span>':''}
           <span class="mono" style="font-size:11px;color:${isDone?'var(--td)':'var(--blue)'};margin-left:6px;margin-right:4px;flex-shrink:0">15 XP</span>
           <div class="tl-controls" style="display:none;position:absolute;right:4px;top:50%;transform:translateY(-50%);gap:4px">
             <button style="background:var(--surface);border:1px solid var(--border);color:var(--td);padding:2px 6px;border-radius:2px;font-size:9px;cursor:pointer" onclick="event.stopPropagation(); window.openTimelineModal('${block.id}')"><i class="fa-solid fa-pen"></i></button>
@@ -1474,7 +1471,7 @@ document.querySelectorAll('.nav-tab[data-view]').forEach(btn => {
     btn.classList.add('active');
     document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
     $(btn.dataset.view).classList.add('active');
-    if(btn.dataset.view==='view-matrix') renderMatrix();
+    if(btn.dataset.view=='view-matrix') renderMatrix();
   });
 });
 
@@ -1532,27 +1529,22 @@ function parseTask(raw) {
 function getFilteredSortedTasks() {
   let tasks = [...S.tasks];
 
-  // Category filter
   if(S.taskCatFilter) tasks = tasks.filter(t => t.category === S.taskCatFilter);
 
-  // View filter
   const today = dateKey(new Date());
   if(S.taskFilter === 'today') tasks = tasks.filter(t => dateKey(new Date(t.createdAt)) === today);
   if(S.taskFilter === 'pending') tasks = tasks.filter(t => !t.completed);
   if(S.taskFilter === 'done') tasks = tasks.filter(t => t.completed);
 
-  // Sort
   if(S.taskSortMode === 'time') tasks.sort((a,b)=>(a.time||'25:00').localeCompare(b.time||'25:00'));
   else if(S.taskSortMode === 'xp') tasks.sort((a,b)=>b.xp-a.xp);
   else if(S.taskSortMode === 'created') tasks.sort((a,b)=>a.createdAt-b.createdAt);
-  // custom = no re-sort
 
-  // Completed always last
   tasks.sort((a,b)=>{ if(a.completed!==b.completed) return a.completed?1:-1; return 0; });
   return tasks;
 }
 
-function handleTaskToTimelineDrop(e) {
+window.handleTaskToTimelineDrop = function(e) {
   e.preventDefault();
   $('routine-timeline').style.background = 'transparent';
   var taskId = e.dataTransfer.getData('text/plain');
@@ -1590,6 +1582,7 @@ function handleTaskToTimelineDrop(e) {
 
 function renderTasks() {
   const list = $('task-list');
+  if(!list) return;
   list.innerHTML = '';
   const tasks = getFilteredSortedTasks();
 
@@ -1605,8 +1598,7 @@ function renderTasks() {
     el.setAttribute('draggable','true');
     el.dataset.id = task.id;
 
-    const catColor = CAT_COLORS[task.category] || 'var(--tm)';
-        const catClass = task.category ? `cat-${task.category}` : 'cat-default';
+    const catClass = task.category ? `cat-${task.category}` : 'cat-default';
 
         let timeHtml = '';
         if(task.time) {
@@ -1648,7 +1640,6 @@ function renderTasks() {
     list.appendChild(el);
   });
 
-  // Events
   list.querySelectorAll('.task-check').forEach(el => {
     el.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -1659,7 +1650,6 @@ function renderTasks() {
   list.querySelectorAll('.task-edit-btn').forEach(el => el.addEventListener('click', e => { e.stopPropagation(); window.openEditTaskModal(e.currentTarget.dataset.id); }));
   list.querySelectorAll('.task-del-btn').forEach(el => el.addEventListener('click', e => { e.stopPropagation(); deleteTask(e.currentTarget.dataset.id); }));
 
-  // Drag & drop
     let dragId = null;
     list.querySelectorAll('.task-card').forEach(function(el) {
       el.addEventListener('dragstart', function(e) { 
@@ -1668,7 +1658,7 @@ function renderTasks() {
         e.dataTransfer.setData('text/plain', el.dataset.id);
         el.style.opacity = '.4'; 
       });
-      el.addEventListener('dragend', function(e) { el.style.opacity='1'; });
+      el.addEventListener('dragend', function() { el.style.opacity='1'; });
     el.addEventListener('dragover', e => { e.preventDefault(); el.classList.add('drag-over'); });
     el.addEventListener('dragleave', () => el.classList.remove('drag-over'));
     el.addEventListener('drop', e => {
@@ -1690,7 +1680,6 @@ function completeTask(id, x, y) {
   pushAppHistory();
 
   if(task.completed) {
-    // Uncomplete: refund XP that was awarded
     if(task._xpAwarded) addXP(-task._xpAwarded, 'TASK REVERTED');
     task.completed = false; task.completedAt = null; task._xpAwarded = 0;
     window.save(); renderTasks(); return;
@@ -1718,7 +1707,6 @@ function completeTask(id, x, y) {
 
   addXP(xpAwarded, task.title, x, y);
 
-  // Handle repeat
   if(task.repeat === 'daily') {
     setTimeout(()=>{
       const clone = {...task, id:Date.now().toString(), completed:false, completedAt:null, _xpAwarded:0, createdAt:Date.now()};
@@ -1737,7 +1725,6 @@ function deleteTask(id) {
   window.save(); renderTasks();
 }
 
-// Task Modal
 window.openNewTaskModal = function() {
   $('task-modal-title').innerText = 'INJECT DIRECTIVE';
   $('task-modal-id').value = '';
@@ -1787,7 +1774,6 @@ window.saveTaskModal = function() {
   toast('DIRECTIVE SAVED', 'blue');
 }
 
-// Command input
 $('cmd-input').addEventListener('keydown', function(e) {
   if(e.key==='Enter' && e.target.value.trim()) {
     const task = parseTask(e.target.value.trim());
@@ -1797,7 +1783,6 @@ $('cmd-input').addEventListener('keydown', function(e) {
   }
 });
 
-// Filters
 document.querySelectorAll('.filter-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active-filter','btn-blue'));
@@ -1829,7 +1814,6 @@ document.querySelectorAll('.cat-filter-btn').forEach(btn => {
   });
 });
 
-// Style for active filter buttons
 document.head.insertAdjacentHTML('beforeend',`<style>.active-filter,.active-sort{border-color:var(--blue)!important;color:var(--blue)!important}</style>`);
 
 // ═══════════════════════════════════════════════
@@ -1846,14 +1830,7 @@ window.applyDopamineTax = function() {
 function checkDetoxStreak() {
   const today = dateKey(new Date());
   if(S.detox_last_checkin === today) return;
-  if(S.detox_last_checkin) {
-    const yesterday = new Date(); yesterday.setDate(yesterday.getDate()-1);
-    if(S.detox_last_checkin === dateKey(yesterday)) {
-      // maintained streak, handled manually via tax button
-    }
-  }
   S.detox_last_checkin = today;
-  // Increment only if no tax applied today (simple heuristic — no penalty recorded)
   window.save();
 }
 
@@ -1992,20 +1969,15 @@ function renderWorkoutHistory() {
 
 function updatePhysStats() {
   $('phys-session-count').innerText = S.workout_log.length;
-  // Simple streak calc
   const days = new Set(S.workout_log.map(l=>dateKey(new Date(l.date))));
   let streak=0, d=new Date();
   while(days.has(dateKey(d))){ streak++; d.setDate(d.getDate()-1); }
   $('phys-streak').innerText = streak;
 }
 
-// Flashcards module removed
-
 // ═══════════════════════════════════════════════
 // SYLLABUS
 // ═══════════════════════════════════════════════
-let activeSubjectId=null;
-
 window.renderSyllabus = function() {
   const list=$('subject-list'); if(!list) return;
   list.innerHTML='';
@@ -2036,7 +2008,7 @@ window.addSubject = function() {
 }
 
 window.selectSubject = function(id) {
-  activeSubjectId=id;
+  window.activeSubjectId=id;
   const subj=S.neural.subjects.find(s=>s.id===id);
   $('syllabus-idle').style.display='none';
   $('syllabus-detail').style.display='flex';
@@ -2045,7 +2017,7 @@ window.selectSubject = function(id) {
 }
 
 window.renderTopics = function() {
-  const subj=S.neural.subjects.find(s=>s.id===activeSubjectId); if(!subj) return;
+  const subj=S.neural.subjects.find(s=>s.id===window.activeSubjectId); if(!subj) return;
   const done=subj.topics.filter(t=>t.status==='Done').length;
   const total=subj.topics.length;
   const pct=total?Math.floor((done/total)*100):0;
@@ -2083,15 +2055,15 @@ window.renderTopics = function() {
   }
 
   window.addTopic = function() {
-    const name=$('new-topic-name').value.trim(); if(!name||!activeSubjectId) return;
+    const name=$('new-topic-name').value.trim(); if(!name||!window.activeSubjectId) return;
     pushAppHistory();
-    const subj=S.neural.subjects.find(function(s) { return s.id===activeSubjectId; });
+    const subj=S.neural.subjects.find(function(s) { return s.id===window.activeSubjectId; });
     subj.topics.push({id:'t_'+Date.now(),name,status:'Not Started'});
     window.save(); window.renderTopics(); $('new-topic-name').value='';
   }
 
   window.deleteTopic = function(id) {
-      const subj=S.neural.subjects.find(function(s) { return s.id===activeSubjectId; }); if(!subj) return;
+      const subj=S.neural.subjects.find(function(s) { return s.id===window.activeSubjectId; }); if(!subj) return;
       pushAppHistory();
       subj.topics=subj.topics.filter(function(t) { return t.id!==id; });
       window.save(); window.renderTopics();
@@ -2125,12 +2097,10 @@ window.renderMeditation = function() {
       <div class="mono" style="font-size:10px;color:var(--tm);margin-top:2px">${log.duration} min · ${'★'.repeat(log.quality||0)}${'☆'.repeat(5-(log.quality||0))}${log.notes?' · '+log.notes:''}</div>
     </div>`;
   });
-  // Stats
   const now=new Date();
   const weekStart=new Date(now); weekStart.setDate(now.getDate()-7);
   const weekTotal=S.neural.meditation_log.filter(l=>l.date>=weekStart.getTime()).reduce((a,l)=>a+l.duration,0);
   $('med-weekly').innerText=weekTotal+' min';
-  // Streak
   let streak=0, d=new Date();
   const medDays=new Set(S.neural.meditation_log.map(l=>dateKey(new Date(l.date))));
   while(medDays.has(dateKey(d))){ streak++; d.setDate(d.getDate()-1); }
@@ -2180,14 +2150,12 @@ function renderMatrix() {
   if($('weight-input')) $('weight-input').value = S.profile.currentWeight || 48.4;
   if($('set-avatar-url')) $('set-avatar-url').value = S.profile.avatarUrl || '';
 
-  // Stats
     const done=S.tasks.filter(t=>t.completed).length;
     const total=S.tasks.length;
     $('stat-completion').innerHTML=`${total?Math.floor((done/total)*100):0}<span style="font-size:14px">%</span>`;
     $('stat-tasks').innerText=done;
     $('stat-workouts').innerText=S.workout_log.length;
 
-    // Pentagon
   const cats={Logic:0,Strength:0,Focus:0,Discipline:0,Grind:0};
   const maxC={Logic:.1,Strength:.1,Focus:.1,Discipline:.1,Grind:.1};
   S.tasks.forEach(t=>{
@@ -2218,7 +2186,6 @@ function renderMatrix() {
   const poly=$('radar-poly');
   if(poly) poly.setAttribute('points',[pt(0,vals[0]),pt(72,vals[1]),pt(144,vals[2]),pt(216,vals[3]),pt(288,vals[4])].join(' '));
 
-  // Attribute bars
   const attrBars=$('attr-bars');
   const attrData=[
     {name:'LOGIC',val:vals[0],color:'var(--blue)'},
@@ -2237,7 +2204,6 @@ function renderMatrix() {
     </div>
   `).join('');
 
-  // Heatmap — real data
   const heatGrid=$('heatmap-grid'); if(!heatGrid) return;
   heatGrid.innerHTML='';
   const COLS=12, ROWS=7;
@@ -2270,9 +2236,6 @@ function renderMatrix() {
   }
 }
 
-// ═══════════════════════════════════════════════
-// BOOT SEQUENCE
-// ═══════════════════════════════════════════════
 function runBoot() {
   const lines=[
     'CONNECTING...',
@@ -2298,16 +2261,12 @@ function runBoot() {
   },200);
 }
 
-// ═══════════════════════════════════════════════
-// INIT
-// ═══════════════════════════════════════════════
 window.onload = () => {
   updateHeader();
   updateClock();
   renderTasks();
   renderExercises();
   
-  // Hardcode dropdown default initialization to Semester 2
   if ($('syl-sem-select')) {
     $('syl-sem-select').value = "2";
   }
@@ -2315,8 +2274,7 @@ window.onload = () => {
   window.filterSyllabusBySem();
   window.renderMeditation();
   
-  // Initialize default active neural panel view states cleanly
-  const medTab = document.querySelector('.neural-tab[data-neural=\"neural-meditation\"]');
+  const medTab = document.querySelector('.neural-tab[data-neural="neural-meditation"]');
   if (medTab) {
     medTab.click();
   } else {
@@ -2326,7 +2284,6 @@ window.onload = () => {
   
   updateDetoxUI();
   updateSortButtons();
-  // Init filter state from saved
   const savedFilter=document.querySelector(`.filter-btn[data-filter="${S.taskFilter}"]`);
   if(savedFilter){ document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active-filter')); savedFilter.classList.add('active-filter'); }
   const savedCat=document.querySelector(`.cat-filter-btn[data-cat="${S.taskCatFilter}"]`);
