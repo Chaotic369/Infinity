@@ -341,9 +341,9 @@ textarea{resize:none}
       </div>
       <div style="display:flex;align-items:center;gap:12px;flex-shrink:0">
         <div style="text-align:right;display:flex;flex-direction:column;justify-content:center">
-                  <div id="sys-rank" class="mono" style="font-size:10px;color:var(--purple);font-weight:800;letter-spacing:0.05em;line-height:1.2">SLAVE</div>
-                  <div class="mono" style="font-size:9px;color:var(--tm);margin-top:1px;font-weight:700">LV <span id="sys-level" style="color:var(--tp)">1</span></div>
-                </div>
+          <div id="sys-rank" class="mono" style="font-size:10px;color:var(--purple);font-weight:800;letter-spacing:0.05em;line-height:1.2">SLAVE</div>
+          <div class="mono" style="font-size:9px;color:var(--tm);margin-top:1px;font-weight:700">LV <span id="sys-level" style="color:var(--tp)">1</span></div>
+        </div>
         <div style="display:flex;flex-direction:column;gap:3px;justify-content:center">
                   <div style="width:110px;height:6px;background:#161616;border:1px solid var(--border);border-radius:3px;overflow:hidden;padding:0;display:flex;align-items:center">
                     <div id="xp-bar" style="height:100%;background:linear-gradient(90deg, var(--blue), var(--purple));width:0%;transition:width .5s cubic-bezier(0.4, 0, 0.2, 1);border-radius:2px"></div>
@@ -401,7 +401,7 @@ textarea{resize:none}
           <div class="mono" style="font-size:10px;letter-spacing:.08em;color:var(--red)">DOPAMINE TAX</div>
           <div style="font-size:11px;color:var(--tm);margin-top:2px">Consumed short-form content today?</div>
         </div>
-        <button class="btn btn-red" style="font-size:10px;padding:4px 10px" onclick="window.applyDopamineTax()">CONFIRM GUILT</button>
+        <button class="btn btn-red" style="font-size:10px;padding:4px 10px" onclick="window.applyDopamineTax()"><i class="fa-solid fa-hand-holding-dollar"></i> TAX</button>
       </div>
       <div style="display:flex;align-items:center;gap:16px;border-top:1px solid var(--border);padding-top:8px;margin-top:2px">
         <div>
@@ -682,8 +682,8 @@ const DEFAULT = {
     {id:'t6',time:'11:10',label:'FUEL: BADAAM, CHANA, BANANA',color:'var(--green)'},
     {id:'t7',time:'12:10',label:'DEPLOYMENT: COLLEGE',color:'var(--purple)'},
     {id:'t8',time:'17:20',label:'RETURN TO BASE',color:'var(--td)'},
-        {id:'t9',time:'17:30',label:'FUEL RECHARGE: EAT FOOD',color:'var(--green)'},
-        {id:'t10',time:'18:00',label:'NEURAL COMPILE: STUDY / CODE',color:'var(--blue)'},
+    {id:'t9',time:'17:30',label:'FUEL RECHARGE: EAT FOOD',color:'var(--green)'},
+    {id:'t10',time:'18:00',label:'NEURAL COMPILE: STUDY / CODE',color:'var(--blue)'},
     {id:'t11',time:'20:00',label:'FUEL: CHURA MILK, CHANA',color:'var(--green)'},
     {id:'t12',time:'20:30',label:'NEURAL COMPILE: FINAL STUDY BLOCK',color:'var(--blue)'},
     {id:'t13',time:'21:30',label:'PHYSICAL PROTOCOL: EXERCISE',color:'var(--red)'},
@@ -812,7 +812,7 @@ const MASTER_SYLLABUS = {
     { code: "SUCCBCAGAI203", name: "Computer Organization and Architecture", hours: 45, units: [
       { num: 1, title: "Digital Logic Blocks & Signed Math", desc: "Combinational gates, flip-flop sequences, counters, variable sizing, fixed/floating point normalization algorithms." },
       { num: 2, title: "Register Topology & Bus Protocols", desc: "Internal register maps, bus communication logic, instruction execution steps, timing matrix controls, interruption sequences." },
-      { num: 3, title: "CPU Design, Formats & Instruction Sets", desc: "Stack layout rules, micro-operations, addressing modes, assembly parameters, RISC/CISC engine trade-offs, pipelining branches." },
+      { num: 3, title: "CPU Design, Formats & Instruction Sets", desc: "Stack layout rules, micro-operations, addressing modes, addressing blocks, macro instructions, execution maps." },
       { num: 4, title: "Memory Hierarchies & Input/Output Channeling", desc: "Cache maps, mapping strategies, DMA architectures, module protocols, isolated/memory mapped input vectors." }
     ]},
     { code: "SUCCBCAGAI204", name: "Data Structure", hours: 45, units: [
