@@ -716,7 +716,37 @@ const DEFAULT = {
   taskCatFilter: ''
 };
 
-let S = JSON.parse(localStorage.getItem('sov_v2')) || DEFAULT;
+let S;
+try {
+  const raw = localStorage.getItem('sov_v2');
+  const parsed = raw ? JSON.parse(raw) : null;
+  // Merge parsed data with DEFAULT to ensure all keys exist
+  if (parsed) {
+    S = Object.assign({}, DEFAULT, parsed);
+    S.profile = Object.assign({}, DEFAULT.profile, parsed.profile || {});
+    S.settings = Object.assign({}, DEFAULT.settings, parsed.settings || {});
+    S.neural = Object.assign({}, DEFAULT.neural, parsed.neural || {});
+    S.neural.decks = (parsed.neural && parsed.neural.decks) ? parsed.neural.decks : DEFAULT.neural.decks;
+    S.neural.subjects = (parsed.neural && parsed.neural.subjects) ? parsed.neural.subjects : [];
+    S.neural.meditation_log = (parsed.neural && parsed.neural.meditation_log) ? parsed.neural.meditation_log : [];
+    S.tasks = parsed.tasks || [];
+    S.exercises = parsed.exercises || DEFAULT.exercises;
+    S.workout_log = parsed.workout_log || [];
+    S.timeline = parsed.timeline || DEFAULT.timeline;
+    S.timeline_completed = parsed.timeline_completed || {};
+    S.heatmap = parsed.heatmap || {};
+    S.detox_streak = parsed.detox_streak || 0;
+    S.detox_last_checkin = parsed.detox_last_checkin || null;
+    S.taskSortMode = parsed.taskSortMode || 'time';
+    S.taskFilter = parsed.taskFilter || 'all';
+    S.taskCatFilter = parsed.taskCatFilter || '';
+  } else {
+    S = JSON.parse(JSON.stringify(DEFAULT));
+  }
+} catch(e) {
+  console.error('State load error, resetting:', e);
+  S = JSON.parse(JSON.stringify(DEFAULT));
+}
 
 var appUndoStack = [];
 function pushAppHistory() {
@@ -1143,7 +1173,9 @@ window.renderMasterTopics = function(code) {
 }
 
 window.save = function() {
-  localStorage.setItem('sov_v2', JSON.stringify(S));
+  try {
+    localStorage.setItem('sov_v2', JSON.stringify(S));
+  } catch(e) { console.error('localStorage save error:', e); }
   set(ref(db, 'operatives/' + OPERATIVE_ID), S).catch(err => console.error("Firebase Sync Fail:", err));
 }
 
@@ -1151,13 +1183,36 @@ window.syncFromFirebase = function() {
   if (typeof toast === 'function') toast('SYNCING CLOUD CORE...', 'purple');
   get(ref(db, 'operatives/' + OPERATIVE_ID)).then((snapshot) => {
     if (snapshot.exists()) {
-      S = snapshot.val();
+      var cloudData = snapshot.val();
+      // Deep merge: keep defaults for any missing keys so rendering never breaks
+      S = Object.assign({}, DEFAULT, cloudData);
+      // Ensure nested objects are also safe
+      S.profile = Object.assign({}, DEFAULT.profile, cloudData.profile || {});
+      S.settings = Object.assign({}, DEFAULT.settings, cloudData.settings || {});
+      S.neural = Object.assign({}, DEFAULT.neural, cloudData.neural || {});
+      S.neural.decks = (cloudData.neural && cloudData.neural.decks) ? cloudData.neural.decks : DEFAULT.neural.decks;
+      S.neural.subjects = (cloudData.neural && cloudData.neural.subjects) ? cloudData.neural.subjects : [];
+      S.neural.meditation_log = (cloudData.neural && cloudData.neural.meditation_log) ? cloudData.neural.meditation_log : [];
+      S.tasks = cloudData.tasks || [];
+      S.exercises = cloudData.exercises || DEFAULT.exercises;
+      S.workout_log = cloudData.workout_log || [];
+      S.timeline = cloudData.timeline || DEFAULT.timeline;
+      S.timeline_completed = cloudData.timeline_completed || {};
+      S.heatmap = cloudData.heatmap || {};
+      S.detox_streak = cloudData.detox_streak || 0;
+      S.detox_last_checkin = cloudData.detox_last_checkin || null;
+      S.taskSortMode = cloudData.taskSortMode || 'time';
+      S.taskFilter = cloudData.taskFilter || 'all';
+      S.taskCatFilter = cloudData.taskCatFilter || '';
+
       localStorage.setItem('sov_v2', JSON.stringify(S));
       if (typeof updateHeader === 'function') updateHeader();
       if (typeof renderTasks === 'function') renderTasks();
       if (typeof renderExercises === 'function') renderExercises();
-      if (typeof window.renderSyllabus === 'function') window.renderSyllabus();
+      if (typeof renderTimeline === 'function') renderTimeline();
+      if (typeof window.filterSyllabusBySem === 'function') window.filterSyllabusBySem();
       if (typeof window.renderMeditation === 'function') window.renderMeditation();
+      if (typeof updateDetoxUI === 'function') updateDetoxUI();
       var matrixView = document.getElementById('view-matrix');
       if (matrixView && matrixView.classList.contains('active') && typeof renderMatrix === 'function') {
         renderMatrix();
@@ -2236,44 +2291,51 @@ function renderMatrix() {
   }
 }
 
+function dismissBoot() {
+  const boot = $('boot');
+  if (!boot) return;
+  boot.style.opacity = '0';
+  boot.style.transition = 'opacity .3s';
+  setTimeout(() => { if (boot && boot.parentNode) boot.parentNode.removeChild(boot); }, 350);
+}
+
 function runBoot() {
-  const lines=[
-    'CONNECTING...',
-    'SYNCED'
-  ];
-  const container=$('boot-lines');
-  let i=0;
-  const iv=setInterval(()=>{
-    if(i<lines.length){
-      const el=document.createElement('div');
-      el.style.fontSize='11px';
-      el.style.letterSpacing='0.08em';
-      el.innerHTML=`<span style="color:var(--blue)">›</span> ${lines[i]}`;
+  const lines = ['CONNECTING...', 'SYNCED'];
+  const container = $('boot-lines');
+  if (!container) { dismissBoot(); return; }
+  let i = 0;
+  // Hard fallback: always dismiss boot after 2.5s no matter what
+  const hardTimeout = setTimeout(dismissBoot, 2500);
+  const iv = setInterval(() => {
+    if (i < lines.length) {
+      const el = document.createElement('div');
+      el.style.fontSize = '11px';
+      el.style.letterSpacing = '0.08em';
+      el.innerHTML = `<span style="color:var(--blue)">›</span> ${lines[i]}`;
       container.appendChild(el);
       i++;
     } else {
       clearInterval(iv);
-      const boot=$('boot');
-      boot.style.opacity='0';
-      boot.style.transition='opacity .3s';
-      setTimeout(()=>boot.remove(),300);
+      clearTimeout(hardTimeout);
+      dismissBoot();
     }
-  },200);
+  }, 200);
 }
 
-window.onload = () => {
-  updateHeader();
-  updateClock();
-  renderTasks();
-  renderExercises();
-  
+function initApp() {
+  try { updateHeader(); } catch(e) { console.error('updateHeader', e); }
+  try { updateClock(); } catch(e) { console.error('updateClock', e); }
+  try { renderTasks(); } catch(e) { console.error('renderTasks', e); }
+  try { renderExercises(); } catch(e) { console.error('renderExercises', e); }
+  try { renderTimeline(); } catch(e) { console.error('renderTimeline', e); }
+
   if ($('syl-sem-select')) {
     $('syl-sem-select').value = "2";
   }
-  
-  window.filterSyllabusBySem();
-  window.renderMeditation();
-  
+
+  try { window.filterSyllabusBySem(); } catch(e) { console.error('filterSyllabus', e); }
+  try { window.renderMeditation(); } catch(e) { console.error('renderMeditation', e); }
+
   const medTab = document.querySelector('.neural-tab[data-neural="neural-meditation"]');
   if (medTab) {
     medTab.click();
@@ -2281,18 +2343,29 @@ window.onload = () => {
     ['neural-syllabus','neural-meditation'].forEach(id => { if ($(id)) $(id).style.display='none'; });
     if ($('neural-meditation')) $('neural-meditation').style.display='flex';
   }
-  
-  updateDetoxUI();
-  updateSortButtons();
-  const savedFilter=document.querySelector(`.filter-btn[data-filter="${S.taskFilter}"]`);
-  if(savedFilter){ document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active-filter')); savedFilter.classList.add('active-filter'); }
-  const savedCat=document.querySelector(`.cat-filter-btn[data-cat="${S.taskCatFilter}"]`);
-  document.querySelectorAll('.cat-filter-btn').forEach(b=>b.style.opacity='0.5');
-  if(savedCat) savedCat.style.opacity='1';
-  checkDetoxStreak();
-  window.syncFromFirebase();
+
+  try { updateDetoxUI(); } catch(e) {}
+  try { updateSortButtons(); } catch(e) {}
+
+  const savedFilter = document.querySelector(`.filter-btn[data-filter="${S.taskFilter}"]`);
+  if (savedFilter) { document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active-filter')); savedFilter.classList.add('active-filter'); }
+  const savedCat = document.querySelector(`.cat-filter-btn[data-cat="${S.taskCatFilter}"]`);
+  document.querySelectorAll('.cat-filter-btn').forEach(b => b.style.opacity='0.5');
+  if (savedCat) savedCat.style.opacity = '1';
+
+  try { checkDetoxStreak(); } catch(e) {}
+
+  // Sync from Firebase (non-blocking — app already rendered from localStorage)
+  try { window.syncFromFirebase(); } catch(e) { console.error('syncFromFirebase', e); }
+
   setTimeout(runBoot, 100);
-};
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initApp);
+} else {
+  initApp();
+}
 </script>
 </body>
 </html>
